@@ -8,6 +8,8 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     
     steps:
     - name: Checkout code
@@ -37,27 +39,15 @@ jobs:
       id: tag
       run: echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
-    - name: Wait for artifacts
-      run: |
-        echo "Waiting for build artifacts to be available..."
-        sleep 30
-
-    - name: Download Windows artifact
+    - name: Download all artifacts
       uses: actions/download-artifact@v4
       with:
-        name: StreamCap-Windows-v${{ steps.version.outputs.version }}
-        path: ./artifacts/
-
-    - name: Download macOS artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: StreamCap-macOS-v${{ steps.version.outputs.version }}
         path: ./artifacts/
 
     - name: List downloaded artifacts
       run: |
         echo "Downloaded artifacts:"
-        ls -la ./artifacts/
+        find ./artifacts/ -type f -name "*.zip" -o -name "*.tar.gz" | sort
 
     - name: Generate release notes
       id: release_notes
@@ -102,13 +92,13 @@ jobs:
         draft: false
         prerelease: false
         files: |
-          ./artifacts/StreamCap-Windows-v${{ steps.version.outputs.version }}.zip
-          ./artifacts/StreamCap-macOS-v${{ steps.version.outputs.version }}.tar.gz
+          ./artifacts/**/*.zip
+          ./artifacts/**/*.tar.gz
         token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Update latest release
       run: |
-        echo "Release v${{ steps.version.outputs.version }} has been created successfully!"
-        echo "Download links:"
-        echo "- Windows: https://github.com/${{ github.repository }}/releases/download/${{ steps.tag.outputs.tag }}/StreamCap-Windows-v${{ steps.version.outputs.version }}.zip"
-        echo "- macOS: https://github.com/${{ github.repository }}/releases/download/${{ steps.tag.outputs.tag }}/StreamCap-macOS-v${{ steps.version.outputs.version }}.tar.gz"
+        echo "✅ Release v${{ steps.version.outputs.version }} has been created successfully!"
+        echo "🔗 Release URL: https://github.com/${{ github.repository }}/releases/tag/${{ steps.tag.outputs.tag }}"
+        echo "📦 Available downloads:"
+        find ./artifacts/ -type f \( -name "*.zip" -o -name "*.tar.gz" \) -exec basename {} \;
