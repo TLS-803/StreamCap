@@ -30,7 +30,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.flet]
 org = "io.github.TLS-803.streamcap"
-product = "StreamCap"
+product = "TLS-StreamCap"
 company = "io.github.TLS-803.streamcap"
 copyright = "Copyright (C) 2025 by TLS"
 compile.app = false
