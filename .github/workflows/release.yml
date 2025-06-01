@@ -47,7 +47,7 @@ jobs:
     - name: List downloaded artifacts
       run: |
         echo "Downloaded artifacts:"
-        find ./artifacts/ -type f -name "*.zip" -o -name "*.tar.gz" | sort
+        find ./artifacts/ -type f -name "*.zip" -o -name "*.dmg" | sort
 
     - name: Generate release notes
       id: release_notes
@@ -57,7 +57,7 @@ jobs:
 
         ### 📦 Downloads
         - **Windows**: StreamCap-Windows-v${{ steps.version.outputs.version }}.zip
-        - **macOS**: StreamCap-macOS-v${{ steps.version.outputs.version }}.tar.gz
+        - **macOS**: StreamCap-macOS-v${{ steps.version.outputs.version }}.dmg
 
         ### 📋 Description
         ${{ steps.version.outputs.description }}
@@ -70,9 +70,10 @@ jobs:
         3. Run StreamCap.exe
 
         **macOS:**
-        1. Download the macOS tar.gz file
-        2. Extract the archive
-        3. Run StreamCap.app
+        1. Download the macOS .dmg file
+        2. Double-click to mount the disk image
+        3. Drag StreamCap.app to Applications folder
+        4. Launch StreamCap from Applications
 
         ### 📝 What's Changed
         - Bug fixes and improvements
@@ -93,7 +94,7 @@ jobs:
         prerelease: false
         files: |
           ./artifacts/**/*.zip
-          ./artifacts/**/*.tar.gz
+          ./artifacts/**/*.dmg
         token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Update latest release
@@ -101,4 +102,4 @@ jobs:
         echo "✅ Release v${{ steps.version.outputs.version }} has been created successfully!"
         echo "🔗 Release URL: https://github.com/${{ github.repository }}/releases/tag/${{ steps.tag.outputs.tag }}"
         echo "📦 Available downloads:"
-        find ./artifacts/ -type f \( -name "*.zip" -o -name "*.tar.gz" \) -exec basename {} \;
+        find ./artifacts/ -type f \( -name "*.zip" -o -name "*.dmg" \) -exec basename {} \;
