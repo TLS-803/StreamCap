@@ -22,7 +22,7 @@ dependencies = [
 [project.urls]
 Documentation = "https://github.com/ihmily/StreamCap/wiki"
 Homepage = "https://github.com/TLS-803/StreamCap"
-Source = "https://github.com/ihmily/StreamCap"
+Source = "https://github.com/TLS-803/StreamCap"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
