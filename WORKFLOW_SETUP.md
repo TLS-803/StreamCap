@@ -51,7 +51,7 @@
 
 ### 构建产物
 - **Windows**: StreamCap-Windows-v{version}.zip
-- **macOS**: StreamCap-macOS-v{version}.tar.gz
+- **macOS**: StreamCap-macOS-v{version}.dmg
 
 ## 📝 使用指南
 

@@ -79,22 +79,23 @@ jobs:
       if: matrix.platform == 'windows'
       timeout-minutes: 15
       run: |
-        flet pack main.py --name StreamCap --icon assets/icon.ico --distpath dist --add-data "assets;assets" --add-data "config;config" --add-data "locales;locales" --hidden-import app --hidden-import app.api --hidden-import app.core --hidden-import app.ui --hidden-import app.utils --hidden-import app.models --hidden-import app.lifecycle --hidden-import app.messages --hidden-import app.scripts
-
-    - name: Build Flet app for macOS
-      if: matrix.platform == 'macos'
-      timeout-minutes: 15
-      run: |
-        # 使用PyInstaller直接构建macOS应用程序（绕过flet pack的问题）
-        echo "🚀 Building macOS app with PyInstaller directly..."
+        # 创建必要的目录结构
+        echo "📁 Creating necessary directories..."
+        mkdir -p downloads ffmpeg logs
+        
+        # 使用PyInstaller直接构建Windows应用程序（确保完整性）
+        echo "🚀 Building Windows app with PyInstaller directly..."
         
         pyinstaller --name StreamCap \
-          --icon assets/icons/Appicon.icns \
+          --icon assets/icon.ico \
           --distpath dist \
           --workpath build \
-          --add-data "assets:assets" \
-          --add-data "config:config" \
-          --add-data "locales:locales" \
+          --add-data "assets;assets" \
+          --add-data "config;config" \
+          --add-data "locales;locales" \
+          --add-data "downloads;downloads" \
+          --add-data "ffmpeg;ffmpeg" \
+          --add-data "logs;logs" \
           --hidden-import app \
           --hidden-import app.api \
           --hidden-import app.core \
@@ -107,14 +108,108 @@ jobs:
           --hidden-import flet \
           --hidden-import flet.core \
           --hidden-import flet.utils \
+          --hidden-import flet_video \
+          --hidden-import requests \
+          --hidden-import json \
+          --hidden-import threading \
+          --hidden-import subprocess \
+          --hidden-import os \
+          --hidden-import sys \
+          --hidden-import pathlib \
+          --hidden-import httpx \
+          --hidden-import aiofiles \
+          --hidden-import screeninfo \
+          --hidden-import streamget \
+          --hidden-import dotenv \
+          --hidden-import multiprocessing \
+          --hidden-import argparse \
+          --hidden-import time \
           --windowed \
           --onefile \
+          main.py
+        
+        # 检查构建结果
+        echo "=== Windows build completed, checking results ==="
+        ls -la dist/
+        
+        # 验证可执行文件
+        if [ -f "dist/StreamCap.exe" ]; then
+          echo "✅ Windows executable created successfully"
+          file dist/StreamCap.exe
+        else
+          echo "❌ Windows executable not found!"
+          exit 1
+        fi
+
+    - name: Build Flet app for macOS
+      if: matrix.platform == 'macos'
+      timeout-minutes: 15
+      run: |
+        # 创建必要的目录结构
+        echo "📁 Creating necessary directories..."
+        mkdir -p downloads ffmpeg logs
+        
+        # 使用PyInstaller构建完整的macOS应用程序包
+        echo "🚀 Building macOS app with PyInstaller..."
+        
+        pyinstaller --name StreamCap \
+          --icon assets/icons/Appicon.icns \
+          --distpath dist \
+          --workpath build \
+          --add-data "assets:assets" \
+          --add-data "config:config" \
+          --add-data "locales:locales" \
+          --add-data "downloads:downloads" \
+          --add-data "logs:logs" \
+          --hidden-import app \
+          --hidden-import app.api \
+          --hidden-import app.core \
+          --hidden-import app.ui \
+          --hidden-import app.utils \
+          --hidden-import app.models \
+          --hidden-import app.lifecycle \
+          --hidden-import app.messages \
+          --hidden-import app.scripts \
+          --hidden-import flet \
+          --hidden-import flet.core \
+          --hidden-import flet.utils \
+          --hidden-import requests \
+          --hidden-import json \
+          --hidden-import threading \
+          --hidden-import subprocess \
+          --hidden-import os \
+          --hidden-import sys \
+          --hidden-import pathlib \
+          --hidden-import httpx \
+          --hidden-import aiofiles \
+          --hidden-import screeninfo \
+          --hidden-import streamget \
+          --windowed \
           --osx-bundle-identifier com.tls803.streamcap \
           main.py
         
         # 检查构建结果
-        echo "=== Build completed, checking results ==="
+        echo "=== macOS build completed, checking results ==="
         ls -la dist/
+        
+        # 验证应用程序包
+        if [ -d "dist/StreamCap.app" ]; then
+          echo "✅ macOS app bundle created successfully"
+          echo "📦 App bundle contents:"
+          find dist/StreamCap.app -type f | head -20
+          
+          # 检查可执行文件
+          if [ -f "dist/StreamCap.app/Contents/MacOS/StreamCap" ]; then
+            echo "✅ Executable found in app bundle"
+            file dist/StreamCap.app/Contents/MacOS/StreamCap
+          else
+            echo "❌ Executable not found in app bundle!"
+            exit 1
+          fi
+        else
+          echo "❌ macOS app bundle not found!"
+          exit 1
+        fi
 
     - name: Prepare macOS app for DMG
       if: matrix.platform == 'macos'
@@ -140,6 +235,47 @@ jobs:
         ls -la StreamCap.app/Contents/
         echo "💻 Executable:"
         ls -la StreamCap.app/Contents/MacOS/
+        
+        # 详细检查应用包内容
+        echo "🔍 Detailed app contents verification:"
+        if [ -d "StreamCap.app/Contents/MacOS/assets" ]; then
+          echo "✅ Assets directory found"
+          ls -la StreamCap.app/Contents/MacOS/assets/
+        else
+          echo "❌ Assets directory missing"
+        fi
+        
+        if [ -d "StreamCap.app/Contents/MacOS/config" ]; then
+          echo "✅ Config directory found"
+          ls -la StreamCap.app/Contents/MacOS/config/
+        else
+          echo "❌ Config directory missing"
+        fi
+        
+        if [ -d "StreamCap.app/Contents/MacOS/locales" ]; then
+          echo "✅ Locales directory found"
+          ls -la StreamCap.app/Contents/MacOS/locales/
+        else
+          echo "❌ Locales directory missing"
+        fi
+        
+        if [ -d "StreamCap.app/Contents/MacOS/downloads" ]; then
+          echo "✅ Downloads directory found"
+        else
+          echo "❌ Downloads directory missing"
+        fi
+        
+        if [ -d "StreamCap.app/Contents/MacOS/ffmpeg" ]; then
+          echo "✅ FFmpeg directory found"
+        else
+          echo "❌ FFmpeg directory missing"
+        fi
+        
+        if [ -d "StreamCap.app/Contents/MacOS/logs" ]; then
+          echo "✅ Logs directory found"
+        else
+          echo "❌ Logs directory missing"
+        fi
         
         echo "✅ macOS app ready for DMG creation"
 

@@ -24,7 +24,7 @@
 
 **输出：**
 - `StreamCap-Windows-v{version}.zip`
-- `StreamCap-macOS-v{version}.tar.gz`
+- `StreamCap-macOS-v{version}.dmg`
 
 ## 🚀 release.yml - 发布工作流
 
@@ -39,8 +39,8 @@
 - 生成详细的发布说明
 
 **发布内容：**
-- Windows 安装包
-- macOS 安装包
+- Windows 安装包 (.zip)
+- macOS 磁盘映像 (.dmg)
 - 自动生成的发布说明
 - 安装指南
 
