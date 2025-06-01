@@ -81,7 +81,7 @@ jobs:
       run: |
         # 创建必要的目录结构
         echo "📁 Creating necessary directories..."
-        mkdir -p downloads ffmpeg logs
+        mkdir -p downloads logs
         
         # 使用PyInstaller直接构建Windows应用程序（确保完整性）
         echo "🚀 Building Windows app with PyInstaller directly..."
@@ -94,7 +94,6 @@ jobs:
           --add-data "config;config" \
           --add-data "locales;locales" \
           --add-data "downloads;downloads" \
-          --add-data "ffmpeg;ffmpeg" \
           --add-data "logs;logs" \
           --hidden-import app \
           --hidden-import app.api \
@@ -108,7 +107,6 @@ jobs:
           --hidden-import flet \
           --hidden-import flet.core \
           --hidden-import flet.utils \
-          --hidden-import flet_video \
           --hidden-import requests \
           --hidden-import json \
           --hidden-import threading \
@@ -120,26 +118,22 @@ jobs:
           --hidden-import aiofiles \
           --hidden-import screeninfo \
           --hidden-import streamget \
-          --hidden-import dotenv \
-          --hidden-import multiprocessing \
-          --hidden-import argparse \
-          --hidden-import time \
           --windowed \
           --onefile \
           main.py
         
         # 检查构建结果
         echo "=== Windows build completed, checking results ==="
-        ls -la dist/
+        Get-ChildItem -Path dist -Force
         
         # 验证可执行文件
-        if [ -f "dist/StreamCap.exe" ]; then
+        if (Test-Path "dist/StreamCap.exe") {
           echo "✅ Windows executable created successfully"
-          file dist/StreamCap.exe
-        else
+          Get-ItemProperty "dist/StreamCap.exe" | Select-Object Name, Length, LastWriteTime
+        } else {
           echo "❌ Windows executable not found!"
           exit 1
-        fi
+        }
 
     - name: Build Flet app for macOS
       if: matrix.platform == 'macos'
@@ -147,7 +141,7 @@ jobs:
       run: |
         # 创建必要的目录结构
         echo "📁 Creating necessary directories..."
-        mkdir -p downloads ffmpeg logs
+        mkdir -p downloads logs
         
         # 使用PyInstaller构建完整的macOS应用程序包
         echo "🚀 Building macOS app with PyInstaller..."
@@ -160,6 +154,7 @@ jobs:
           --add-data "config:config" \
           --add-data "locales:locales" \
           --add-data "downloads:downloads" \
+          --add-data "ffmpeg:ffmpeg" \
           --add-data "logs:logs" \
           --hidden-import app \
           --hidden-import app.api \
@@ -184,6 +179,11 @@ jobs:
           --hidden-import aiofiles \
           --hidden-import screeninfo \
           --hidden-import streamget \
+          --hidden-import flet_video \
+          --hidden-import dotenv \
+          --hidden-import multiprocessing \
+          --hidden-import argparse \
+          --hidden-import time \
           --windowed \
           --osx-bundle-identifier com.tls803.streamcap \
           main.py

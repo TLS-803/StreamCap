@@ -46,10 +46,29 @@
 
 ### 构建配置
 - **Python 版本**: 3.11
-- **构建工具**: Flet
+- **构建工具**: PyInstaller (直接使用，确保完整性)
 - **Windows 图标**: `assets/icon.ico`
 - **macOS 图标**: `assets/icons/Appicon.icns`
 - **DMG 背景**: `assets/images/dmg.jpg`
+
+### 包含的目录结构
+- `assets/` - 资源文件 (图标、字体、图片等)
+- `config/` - 配置文件
+- `locales/` - 本地化文件
+- `downloads/` - 下载目录 (运行时创建)
+- `ffmpeg/` - FFmpeg 相关文件
+- `logs/` - 日志目录 (运行时创建)
+
+### 隐藏导入模块
+包含所有必要的Python模块：
+- Flet框架相关: `flet`, `flet.core`, `flet.utils`, `flet_video`
+- 网络请求: `httpx`, `requests`
+- 异步文件操作: `aiofiles`
+- 屏幕信息: `screeninfo`
+- 流媒体处理: `streamget`
+- 环境变量: `dotenv`
+- 系统模块: `multiprocessing`, `threading`, `subprocess`
+- 应用模块: 所有 `app.*` 子模块
 
 ### 版本管理
 - **版本源**: `pyproject.toml` 中的 `project.version`
