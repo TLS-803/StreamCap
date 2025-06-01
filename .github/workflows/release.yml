@@ -1,0 +1,127 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Extract version from pyproject.toml
+      id: version
+      run: |
+        pip install tomli
+        python -c "
+        try:
+            import tomllib
+        except ImportError:
+            import tomli as tomllib
+        
+        with open('pyproject.toml', 'rb') as f:
+            data = tomllib.load(f)
+            version = data['project']['version']
+            name = data['project']['name']
+            description = data['project']['description']
+            print(f'version={version}')
+            print(f'name={name}')
+            print(f'description={description}')
+        " >> $GITHUB_OUTPUT
+
+    - name: Get tag name
+      id: tag
+      run: echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+    - name: Get latest workflow run
+      id: workflow_run
+      run: |
+        # Get the latest successful workflow run for the current tag
+        RUN_ID=$(gh run list --workflow=build.yml --status=success --limit=1 --json databaseId --jq '.[0].databaseId')
+        echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Download Windows artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: StreamCap-Windows-v${{ steps.version.outputs.version }}
+        path: ./artifacts/
+        run-id: ${{ steps.workflow_run.outputs.run_id }}
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Download macOS artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: StreamCap-macOS-v${{ steps.version.outputs.version }}
+        path: ./artifacts/
+        run-id: ${{ steps.workflow_run.outputs.run_id }}
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: List downloaded artifacts
+      run: |
+        echo "Downloaded artifacts:"
+        ls -la ./artifacts/
+
+    - name: Generate release notes
+      id: release_notes
+      run: |
+        cat > release_notes.md << 'EOF'
+        ## 🎉 StreamCap v${{ steps.version.outputs.version }}
+
+        ### 📦 Downloads
+        - **Windows**: StreamCap-Windows-v${{ steps.version.outputs.version }}.zip
+        - **macOS**: StreamCap-macOS-v${{ steps.version.outputs.version }}.tar.gz
+
+        ### 📋 Description
+        ${{ steps.version.outputs.description }}
+
+        ### 🔧 Installation
+        
+        **Windows:**
+        1. Download the Windows zip file
+        2. Extract the archive
+        3. Run StreamCap.exe
+
+        **macOS:**
+        1. Download the macOS tar.gz file
+        2. Extract the archive
+        3. Run StreamCap.app
+
+        ### 📝 What's Changed
+        - Bug fixes and improvements
+        - Performance optimizations
+        - Updated dependencies
+
+        ---
+        **Full Changelog**: https://github.com/${{ github.repository }}/compare/v${{ steps.version.outputs.version }}...HEAD
+        EOF
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ steps.tag.outputs.tag }}
+        name: "${{ steps.version.outputs.name }} v${{ steps.version.outputs.version }}"
+        body_path: release_notes.md
+        draft: false
+        prerelease: false
+        files: |
+          ./artifacts/StreamCap-Windows-v${{ steps.version.outputs.version }}.zip
+          ./artifacts/StreamCap-macOS-v${{ steps.version.outputs.version }}.tar.gz
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Update latest release
+      run: |
+        echo "Release v${{ steps.version.outputs.version }} has been created successfully!"
+        echo "Download links:"
+        echo "- Windows: https://github.com/${{ github.repository }}/releases/download/${{ steps.tag.outputs.tag }}/StreamCap-Windows-v${{ steps.version.outputs.version }}.zip"
+        echo "- macOS: https://github.com/${{ github.repository }}/releases/download/${{ steps.tag.outputs.tag }}/StreamCap-macOS-v${{ steps.version.outputs.version }}.tar.gz"

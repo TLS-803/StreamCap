@@ -1,0 +1,164 @@
+name: Build and Package
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'app/**'
+      - 'main.py'
+      - 'pyproject.toml'
+      - 'requirements.txt'
+      - 'assets/**'
+      - 'config/**'
+      - 'locales/**'
+  pull_request:
+    branches: [ main, master ]
+    paths:
+      - 'app/**'
+      - 'main.py'
+      - 'pyproject.toml'
+      - 'requirements.txt'
+      - 'assets/**'
+      - 'config/**'
+      - 'locales/**'
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest]
+        include:
+          - os: windows-latest
+            platform: windows
+            extension: .exe
+            artifact_name: StreamCap-Windows
+          - os: macos-latest
+            platform: macos
+            extension: .app
+            artifact_name: StreamCap-macOS
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt', '**/pyproject.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install flet tomli
+        pip install -r requirements.txt
+
+    - name: Extract version from pyproject.toml
+      id: version
+      shell: bash
+      run: |
+        python -c "
+        try:
+            import tomllib
+        except ImportError:
+            import tomli as tomllib
+        
+        with open('pyproject.toml', 'rb') as f:
+            data = tomllib.load(f)
+            version = data['project']['version']
+            print(f'version={version}')
+        " >> $GITHUB_OUTPUT
+
+    - name: Build Flet app for Windows
+      if: matrix.platform == 'windows'
+      run: |
+        flet pack main.py --name StreamCap --icon assets/icon.ico --distpath dist --add-data "assets;assets" --add-data "config;config" --add-data "locales;locales"
+
+    - name: Build Flet app for macOS
+      if: matrix.platform == 'macos'
+      run: |
+        flet pack main.py --name StreamCap --icon assets/icons/Appicon.icns --distpath dist --add-data "assets:assets" --add-data "config:config" --add-data "locales:locales"
+
+    - name: Create archive for Windows
+      if: matrix.platform == 'windows'
+      shell: bash
+      run: |
+        cd dist
+        7z a -tzip "../${{ matrix.artifact_name }}-v${{ steps.version.outputs.version }}.zip" StreamCap.exe
+
+    - name: Create archive for macOS
+      if: matrix.platform == 'macos'
+      run: |
+        cd dist
+        tar -czf "../${{ matrix.artifact_name }}-v${{ steps.version.outputs.version }}.tar.gz" StreamCap.app
+
+    - name: Upload Windows artifact
+      if: matrix.platform == 'windows'
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.artifact_name }}-v${{ steps.version.outputs.version }}
+        path: ${{ matrix.artifact_name }}-v${{ steps.version.outputs.version }}.zip
+        retention-days: 30
+
+    - name: Upload macOS artifact
+      if: matrix.platform == 'macos'
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.artifact_name }}-v${{ steps.version.outputs.version }}
+        path: ${{ matrix.artifact_name }}-v${{ steps.version.outputs.version }}.tar.gz
+        retention-days: 30
+
+  create-tag:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Extract version from pyproject.toml
+      id: version
+      run: |
+        python -c "
+        try:
+            import tomllib
+        except ImportError:
+            import tomli as tomllib
+        
+        with open('pyproject.toml', 'rb') as f:
+            data = tomllib.load(f)
+            version = data['project']['version']
+            print(f'version={version}')
+        " >> $GITHUB_OUTPUT
+
+    - name: Check if tag exists
+      id: check_tag
+      run: |
+        if git rev-parse "v${{ steps.version.outputs.version }}" >/dev/null 2>&1; then
+          echo "exists=true" >> $GITHUB_OUTPUT
+        else
+          echo "exists=false" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Create and push tag
+      if: steps.check_tag.outputs.exists == 'false'
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git tag -a "v${{ steps.version.outputs.version }}" -m "Release v${{ steps.version.outputs.version }}"
+        git push origin "v${{ steps.version.outputs.version }}"
