@@ -62,12 +62,6 @@ jobs:
         python -m pip install --upgrade pip --timeout 300
         pip install pyinstaller --timeout 300
         pip install -r requirements.txt --timeout 300
-        
-    - name: Verify flet installation
-      run: |
-        python -c "import flet; print(f'Flet version: {flet.__version__}')"
-        python -c "import PyInstaller; print(f'PyInstaller version: {PyInstaller.__version__}')"
-        flet --help
 
     - name: Extract version from pyproject.toml
       id: version
