@@ -34,7 +34,7 @@ jobs:
             artifact_name: StreamCap-Windows
           - os: macos-latest
             platform: macos
-            extension: .app
+            extension: .dmg
             artifact_name: StreamCap-macOS
 
     runs-on: ${{ matrix.os }}
@@ -116,7 +116,7 @@ jobs:
         echo "=== Build completed, checking results ==="
         ls -la dist/
 
-    - name: Fix macOS app permissions and structure
+    - name: Prepare macOS app for DMG
       if: matrix.platform == 'macos'
       run: |
         cd dist
@@ -128,54 +128,20 @@ jobs:
           exit 1
         fi
         
-        echo "=== 🔍 PyInstaller Generated App Structure ==="
-        find StreamCap.app -type f | head -20
+        echo "=== 🔍 Preparing macOS app for DMG ==="
         
-        # 显示PyInstaller生成的Info.plist
-        if [ -f "StreamCap.app/Contents/Info.plist" ]; then
-          echo "=== 📄 PyInstaller Generated Info.plist ==="
-          plutil -p StreamCap.app/Contents/Info.plist 2>/dev/null || cat StreamCap.app/Contents/Info.plist
-        fi
-        
-        # 确保可执行文件有正确的权限
-        if [ -f "StreamCap.app/Contents/MacOS/StreamCap" ]; then
-          echo "✅ Setting executable permissions"
-          chmod +x StreamCap.app/Contents/MacOS/StreamCap
-          
-          # 检查文件类型
-          echo "📋 Executable file type:"
-          file StreamCap.app/Contents/MacOS/StreamCap
-        else
-          echo "❌ Executable not found at expected location"
-          find StreamCap.app -name "StreamCap" -type f
-        fi
-        
-        # 移除扩展属性（quarantine标记）
-        echo "🧹 Removing quarantine attributes"
+        # 设置应用程序权限
+        echo "🔐 Setting app permissions"
+        chmod -R 755 StreamCap.app
         xattr -cr StreamCap.app 2>/dev/null || echo "No extended attributes to remove"
         
-        # 设置正确的权限
-        echo "🔐 Setting correct permissions"
-        chmod -R 755 StreamCap.app
-        
         # 验证应用程序结构
-        echo "=== 📁 Final App Structure ==="
+        echo "📁 App structure:"
         ls -la StreamCap.app/Contents/
-        echo "=== 💻 MacOS Directory ==="
+        echo "💻 Executable:"
         ls -la StreamCap.app/Contents/MacOS/
-        echo "=== 🎯 Resources Directory ==="
-        ls -la StreamCap.app/Contents/Resources/ 2>/dev/null || echo "No Resources directory"
         
-        # 最终验证
-        echo "=== ✅ Final Verification ==="
-        echo "App bundle exists: $([ -d StreamCap.app ] && echo 'YES' || echo 'NO')"
-        echo "Executable exists: $([ -f StreamCap.app/Contents/MacOS/StreamCap ] && echo 'YES' || echo 'NO')"
-        echo "Info.plist exists: $([ -f StreamCap.app/Contents/Info.plist ] && echo 'YES' || echo 'NO')"
-        echo "Executable is executable: $([ -x StreamCap.app/Contents/MacOS/StreamCap ] && echo 'YES' || echo 'NO')"
-        
-        # 测试应用程序启动（快速测试）
-        echo "=== 🧪 Quick Launch Test ==="
-        timeout 5s ./StreamCap.app/Contents/MacOS/StreamCap --help 2>&1 || echo "Launch test completed (timeout expected)"
+        echo "✅ macOS app ready for DMG creation"
 
     - name: Create archive for Windows
       if: matrix.platform == 'windows'
@@ -184,11 +150,43 @@ jobs:
         cd dist
         7z a -tzip "../${{ matrix.artifact_name }}-v${{ steps.version.outputs.version }}.zip" StreamCap.exe
 
-    - name: Create archive for macOS
+    - name: Create DMG for macOS
       if: matrix.platform == 'macos'
       run: |
-        cd dist
-        tar -czf "../${{ matrix.artifact_name }}-v${{ steps.version.outputs.version }}.tar.gz" StreamCap.app
+        echo "💿 Creating macOS DMG package..."
+        
+        # 创建临时目录用于DMG内容
+        mkdir -p dmg_temp
+        cp -R dist/StreamCap.app dmg_temp/
+        
+        # 创建Applications文件夹的符号链接（方便用户拖拽安装）
+        ln -s /Applications dmg_temp/Applications
+        
+        # 使用hdiutil创建DMG（更可靠的方法）
+        hdiutil create -volname "StreamCap v${{ steps.version.outputs.version }}" \
+          -srcfolder dmg_temp \
+          -ov \
+          -format UDZO \
+          -imagekey zlib-level=9 \
+          "${{ matrix.artifact_name }}-v${{ steps.version.outputs.version }}.dmg"
+        
+        # 验证DMG创建成功
+        if [ -f "${{ matrix.artifact_name }}-v${{ steps.version.outputs.version }}.dmg" ]; then
+          echo "✅ DMG created successfully"
+          ls -lh "${{ matrix.artifact_name }}-v${{ steps.version.outputs.version }}.dmg"
+          
+          # 快速验证DMG内容
+          echo "🔍 Verifying DMG contents..."
+          hdiutil attach "${{ matrix.artifact_name }}-v${{ steps.version.outputs.version }}.dmg" -readonly -mountpoint /tmp/verify_dmg
+          ls -la /tmp/verify_dmg/
+          hdiutil detach /tmp/verify_dmg
+        else
+          echo "❌ Failed to create DMG"
+          exit 1
+        fi
+        
+        # 清理临时目录
+        rm -rf dmg_temp
 
     - name: Upload Windows artifact
       if: matrix.platform == 'windows'
@@ -203,7 +201,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: ${{ matrix.artifact_name }}-v${{ steps.version.outputs.version }}
-        path: ${{ matrix.artifact_name }}-v${{ steps.version.outputs.version }}.tar.gz
+        path: ${{ matrix.artifact_name }}-v${{ steps.version.outputs.version }}.dmg
         retention-days: 30
 
   create-tag:
