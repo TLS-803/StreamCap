@@ -5,7 +5,7 @@ description = "Live Stream Recorder"
 authors = [{ name = "Hmily" }]
 license = {text = "Apache-2.0"}
 readme = "README.md"
-url='https://github.com/ihmily/StreamCap'
+url='https://github.com/TLS-803/StreamCap'
 requires-python = ">=3.10,<4.0"
 
 dependencies = [
