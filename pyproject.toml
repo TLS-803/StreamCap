@@ -21,7 +21,7 @@ dependencies = [
 
 [project.urls]
 Documentation = "https://github.com/ihmily/StreamCap/wiki"
-Homepage = "https://github.com/ihmily/StreamCap"
+Homepage = "https://github.com/TLS-803/StreamCap"
 Source = "https://github.com/ihmily/StreamCap"
 
 [build-system]
