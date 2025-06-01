@@ -79,13 +79,13 @@ jobs:
       if: matrix.platform == 'windows'
       timeout-minutes: 15
       run: |
-        flet pack main.py --name StreamCap --icon assets/icon.ico --distpath dist --add-data "assets;assets" --add-data "config;config" --add-data "locales;locales"
+        flet pack main.py --name StreamCap --icon assets/icon.ico --distpath dist --add-data "assets;assets" --add-data "config;config" --add-data "locales;locales" --hidden-import app --hidden-import app.api --hidden-import app.core --hidden-import app.ui --hidden-import app.utils --hidden-import app.models --hidden-import app.lifecycle --hidden-import app.messages --hidden-import app.scripts
 
     - name: Build Flet app for macOS
       if: matrix.platform == 'macos'
       timeout-minutes: 15
       run: |
-        flet pack main.py --name StreamCap --icon assets/icons/Appicon.icns --distpath dist --add-data "assets:assets" --add-data "config:config" --add-data "locales:locales"
+        flet pack main.py --name StreamCap --icon assets/icons/Appicon.icns --distpath dist --add-data "assets:assets" --add-data "config:config" --add-data "locales:locales" --hidden-import app --hidden-import app.api --hidden-import app.core --hidden-import app.ui --hidden-import app.utils --hidden-import app.models --hidden-import app.lifecycle --hidden-import app.messages --hidden-import app.scripts
 
     - name: Create archive for Windows
       if: matrix.platform == 'windows'
