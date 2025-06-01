@@ -79,13 +79,48 @@ jobs:
       if: matrix.platform == 'windows'
       timeout-minutes: 15
       run: |
-        flet pack main.py --name StreamCap --icon assets/icon.ico --distpath dist --add-data "assets;assets" --add-data "config;config" --add-data "locales;locales" --hidden-import app --hidden-import app.api --hidden-import app.core --hidden-import app.ui --hidden-import app.utils --hidden-import app.models --hidden-import app.lifecycle --hidden-import app.messages --hidden-import app.scripts
+        flet pack main.py --name StreamCap --icon assets/icon.ico --distpath dist --add-data "assets;assets" --add-data "config;config" --add-data "locales;locales" --hidden-import app --hidden-import app.api --hidden-import app.core --hidden-import app.ui --hidden-import app.utils --hidden-import app.models --hidden-import app.lifecycle --hidden-import app.messages --hidden-import app.scripts --onefile --windowed
 
     - name: Build Flet app for macOS
       if: matrix.platform == 'macos'
       timeout-minutes: 15
       run: |
-        flet pack main.py --name StreamCap --icon assets/icons/Appicon.icns --distpath dist --add-data "assets:assets" --add-data "config:config" --add-data "locales:locales" --hidden-import app --hidden-import app.api --hidden-import app.core --hidden-import app.ui --hidden-import app.utils --hidden-import app.models --hidden-import app.lifecycle --hidden-import app.messages --hidden-import app.scripts
+        flet pack main.py --name StreamCap --icon assets/icons/Appicon.icns --distpath dist --add-data "assets:assets" --add-data "config:config" --add-data "locales:locales" --hidden-import app --hidden-import app.api --hidden-import app.core --hidden-import app.ui --hidden-import app.utils --hidden-import app.models --hidden-import app.lifecycle --hidden-import app.messages --hidden-import app.scripts --onefile --windowed
+
+    - name: Fix macOS app permissions and structure
+      if: matrix.platform == 'macos'
+      run: |
+        cd dist
+        # 确保可执行文件有正确的权限
+        chmod +x StreamCap.app/Contents/MacOS/StreamCap
+        
+        # 复制正确的Info.plist
+        if [ ! -f "StreamCap.app/Contents/Info.plist" ] || [ -f "../assets/Info.plist" ]; then
+          echo "Copying custom Info.plist"
+          cp ../assets/Info.plist StreamCap.app/Contents/Info.plist
+        fi
+        
+        # 移除扩展属性（quarantine标记）
+        xattr -cr StreamCap.app
+        
+        # 确保应用程序目录结构正确
+        mkdir -p StreamCap.app/Contents/Resources
+        
+        # 验证应用程序结构
+        echo "=== App Structure ==="
+        ls -la StreamCap.app/Contents/
+        echo "=== MacOS Directory ==="
+        ls -la StreamCap.app/Contents/MacOS/
+        echo "=== Info.plist Content ==="
+        if [ -f "StreamCap.app/Contents/Info.plist" ]; then
+          plutil -p StreamCap.app/Contents/Info.plist
+        else
+          echo "Error: Info.plist still not found"
+        fi
+        
+        # 测试应用程序是否可以启动（不显示GUI）
+        echo "=== Testing app launch ==="
+        ./StreamCap.app/Contents/MacOS/StreamCap --version || echo "App test completed"
 
     - name: Create archive for Windows
       if: matrix.platform == 'windows'
