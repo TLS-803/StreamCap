@@ -20,7 +20,7 @@ dependencies = [
 ]
 
 [project.urls]
-Documentation = "https://github.com/ihmily/StreamCap/wiki"
+Documentation = "https://github.com/TLS-803/StreamCap/wiki"
 Homepage = "https://github.com/TLS-803/StreamCap"
 Source = "https://github.com/TLS-803/StreamCap"
 
