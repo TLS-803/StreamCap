@@ -85,7 +85,12 @@ jobs:
       if: matrix.platform == 'macos'
       timeout-minutes: 15
       run: |
+        # 使用flet pack构建应用程序
         flet pack main.py --name StreamCap --icon assets/icons/Appicon.icns --distpath dist --add-data "assets:assets" --add-data "config:config" --add-data "locales:locales" --hidden-import app --hidden-import app.api --hidden-import app.core --hidden-import app.ui --hidden-import app.utils --hidden-import app.models --hidden-import app.lifecycle --hidden-import app.messages --hidden-import app.scripts
+        
+        # 检查构建结果
+        echo "=== Build completed, checking results ==="
+        ls -la dist/
 
     - name: Fix macOS app permissions and structure
       if: matrix.platform == 'macos'
@@ -94,54 +99,116 @@ jobs:
         
         # 检查应用程序是否存在
         if [ ! -d "StreamCap.app" ]; then
-          echo "Error: StreamCap.app not found!"
+          echo "❌ Error: StreamCap.app not found!"
           ls -la
           exit 1
         fi
         
-        echo "=== Original App Structure ==="
+        echo "=== 🔍 Original App Structure ==="
         find StreamCap.app -type f | head -20
         
-        # 确保可执行文件有正确的权限
+        # 确保Contents目录结构正确
+        mkdir -p StreamCap.app/Contents/MacOS
+        mkdir -p StreamCap.app/Contents/Resources
+        
+        # 查找可执行文件
+        EXECUTABLE_PATH=""
         if [ -f "StreamCap.app/Contents/MacOS/StreamCap" ]; then
-          chmod +x StreamCap.app/Contents/MacOS/StreamCap
-          echo "✅ Set executable permissions"
+          EXECUTABLE_PATH="StreamCap.app/Contents/MacOS/StreamCap"
         else
-          echo "❌ Executable not found at expected location"
-          find StreamCap.app -name "StreamCap" -type f
+          # 查找可能的可执行文件位置
+          EXECUTABLE_PATH=$(find StreamCap.app -name "StreamCap" -type f -executable | head -1)
+          if [ -n "$EXECUTABLE_PATH" ]; then
+            echo "📁 Found executable at: $EXECUTABLE_PATH"
+            # 如果不在正确位置，移动它
+            if [ "$EXECUTABLE_PATH" != "StreamCap.app/Contents/MacOS/StreamCap" ]; then
+              echo "📦 Moving executable to correct location"
+              mv "$EXECUTABLE_PATH" StreamCap.app/Contents/MacOS/StreamCap
+              EXECUTABLE_PATH="StreamCap.app/Contents/MacOS/StreamCap"
+            fi
+          fi
         fi
         
-        # 备份原始Info.plist（如果存在）
+        if [ -n "$EXECUTABLE_PATH" ] && [ -f "$EXECUTABLE_PATH" ]; then
+          echo "✅ Setting executable permissions for: $EXECUTABLE_PATH"
+          chmod +x "$EXECUTABLE_PATH"
+          
+          # 检查文件类型
+          echo "📋 File type:"
+          file "$EXECUTABLE_PATH"
+        else
+          echo "❌ No executable found!"
+          find StreamCap.app -type f -executable
+          exit 1
+        fi
+        
+        # 备份并显示原始Info.plist
         if [ -f "StreamCap.app/Contents/Info.plist" ]; then
-          echo "=== Original Info.plist ==="
-          plutil -p StreamCap.app/Contents/Info.plist || cat StreamCap.app/Contents/Info.plist
+          echo "=== 📄 Original Info.plist ==="
+          plutil -p StreamCap.app/Contents/Info.plist 2>/dev/null || cat StreamCap.app/Contents/Info.plist
+          cp StreamCap.app/Contents/Info.plist StreamCap.app/Contents/Info.plist.backup
         fi
         
         # 复制我们的自定义Info.plist
         if [ -f "../assets/Info.plist" ]; then
           echo "✅ Copying custom Info.plist"
           cp ../assets/Info.plist StreamCap.app/Contents/Info.plist
+          
+          # 验证Info.plist格式
+          if plutil -lint StreamCap.app/Contents/Info.plist; then
+            echo "✅ Info.plist format is valid"
+          else
+            echo "❌ Info.plist format is invalid, restoring backup"
+            if [ -f "StreamCap.app/Contents/Info.plist.backup" ]; then
+              cp StreamCap.app/Contents/Info.plist.backup StreamCap.app/Contents/Info.plist
+            fi
+          fi
         else
-          echo "❌ Custom Info.plist not found"
+          echo "❌ Custom Info.plist not found at ../assets/Info.plist"
+          ls -la ../assets/
+        fi
+        
+        # 复制图标文件（如果存在）
+        if [ -f "../assets/icons/Appicon.icns" ]; then
+          echo "🎨 Copying app icon"
+          cp ../assets/icons/Appicon.icns StreamCap.app/Contents/Resources/
         fi
         
         # 移除扩展属性（quarantine标记）
+        echo "🧹 Removing quarantine attributes"
         xattr -cr StreamCap.app 2>/dev/null || echo "No extended attributes to remove"
         
-        # 确保应用程序目录结构正确
-        mkdir -p StreamCap.app/Contents/Resources
+        # 设置正确的权限
+        echo "🔐 Setting correct permissions"
+        chmod -R 755 StreamCap.app
+        chmod +x StreamCap.app/Contents/MacOS/StreamCap
         
         # 验证最终应用程序结构
-        echo "=== Final App Structure ==="
+        echo "=== 📁 Final App Structure ==="
         ls -la StreamCap.app/Contents/
-        echo "=== MacOS Directory ==="
+        echo "=== 💻 MacOS Directory ==="
         ls -la StreamCap.app/Contents/MacOS/
-        echo "=== Final Info.plist Content ==="
+        echo "=== 🎯 Resources Directory ==="
+        ls -la StreamCap.app/Contents/Resources/ 2>/dev/null || echo "No Resources directory"
+        
+        # 显示最终Info.plist内容
+        echo "=== 📄 Final Info.plist Content ==="
         if [ -f "StreamCap.app/Contents/Info.plist" ]; then
           plutil -p StreamCap.app/Contents/Info.plist
         else
           echo "❌ Info.plist still not found"
         fi
+        
+        # 检查应用程序签名状态
+        echo "=== 🔏 Code Signature Status ==="
+        codesign -dv StreamCap.app 2>&1 || echo "App is not signed (expected for CI build)"
+        
+        # 最终验证
+        echo "=== ✅ Final Verification ==="
+        echo "App bundle exists: $([ -d StreamCap.app ] && echo 'YES' || echo 'NO')"
+        echo "Executable exists: $([ -f StreamCap.app/Contents/MacOS/StreamCap ] && echo 'YES' || echo 'NO')"
+        echo "Info.plist exists: $([ -f StreamCap.app/Contents/Info.plist ] && echo 'YES' || echo 'NO')"
+        echo "Executable is executable: $([ -x StreamCap.app/Contents/MacOS/StreamCap ] && echo 'YES' || echo 'NO')"
 
     - name: Create archive for Windows
       if: matrix.platform == 'windows'
