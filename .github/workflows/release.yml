@@ -21,13 +21,8 @@ jobs:
     - name: Extract version from pyproject.toml
       id: version
       run: |
-        pip install tomli
         python -c "
-        try:
-            import tomllib
-        except ImportError:
-            import tomli as tomllib
-        
+        import tomllib
         with open('pyproject.toml', 'rb') as f:
             data = tomllib.load(f)
             version = data['project']['version']
@@ -42,30 +37,22 @@ jobs:
       id: tag
       run: echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
-    - name: Get latest workflow run
-      id: workflow_run
+    - name: Wait for artifacts
       run: |
-        # Get the latest successful workflow run for the current tag
-        RUN_ID=$(gh run list --workflow=build.yml --status=success --limit=1 --json databaseId --jq '.[0].databaseId')
-        echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        echo "Waiting for build artifacts to be available..."
+        sleep 30
 
     - name: Download Windows artifact
       uses: actions/download-artifact@v4
       with:
         name: StreamCap-Windows-v${{ steps.version.outputs.version }}
         path: ./artifacts/
-        run-id: ${{ steps.workflow_run.outputs.run_id }}
-        github-token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Download macOS artifact
       uses: actions/download-artifact@v4
       with:
         name: StreamCap-macOS-v${{ steps.version.outputs.version }}
         path: ./artifacts/
-        run-id: ${{ steps.workflow_run.outputs.run_id }}
-        github-token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: List downloaded artifacts
       run: |

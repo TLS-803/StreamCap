@@ -57,21 +57,17 @@ jobs:
           ${{ runner.os }}-pip-
 
     - name: Install dependencies
+      timeout-minutes: 10
       run: |
-        python -m pip install --upgrade pip
-        pip install flet tomli
-        pip install -r requirements.txt
+        python -m pip install --upgrade pip --timeout 300
+        pip install -r requirements.txt --timeout 300
 
     - name: Extract version from pyproject.toml
       id: version
       shell: bash
       run: |
         python -c "
-        try:
-            import tomllib
-        except ImportError:
-            import tomli as tomllib
-        
+        import tomllib
         with open('pyproject.toml', 'rb') as f:
             data = tomllib.load(f)
             version = data['project']['version']
@@ -80,11 +76,13 @@ jobs:
 
     - name: Build Flet app for Windows
       if: matrix.platform == 'windows'
+      timeout-minutes: 15
       run: |
         flet pack main.py --name StreamCap --icon assets/icon.ico --distpath dist --add-data "assets;assets" --add-data "config;config" --add-data "locales;locales"
 
     - name: Build Flet app for macOS
       if: matrix.platform == 'macos'
+      timeout-minutes: 15
       run: |
         flet pack main.py --name StreamCap --icon assets/icons/Appicon.icns --distpath dist --add-data "assets:assets" --add-data "config:config" --add-data "locales:locales"
 
@@ -135,11 +133,7 @@ jobs:
       id: version
       run: |
         python -c "
-        try:
-            import tomllib
-        except ImportError:
-            import tomli as tomllib
-        
+        import tomllib
         with open('pyproject.toml', 'rb') as f:
             data = tomllib.load(f)
             version = data['project']['version']
