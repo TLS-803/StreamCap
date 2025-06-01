@@ -144,10 +144,13 @@ jobs:
     - name: Check if tag exists
       id: check_tag
       run: |
-        if git rev-parse "v${{ steps.version.outputs.version }}" >/dev/null 2>&1; then
+        git fetch --tags
+        if git tag -l "v${{ steps.version.outputs.version }}" | grep -q "v${{ steps.version.outputs.version }}"; then
           echo "exists=true" >> $GITHUB_OUTPUT
+          echo "Tag v${{ steps.version.outputs.version }} already exists, skipping creation"
         else
           echo "exists=false" >> $GITHUB_OUTPUT
+          echo "Tag v${{ steps.version.outputs.version }} does not exist, will create"
         fi
 
     - name: Create and push tag
