@@ -1,5 +1,5 @@
 [project]
-name = "StreamCap"
+name = "TLS-StreamCap"
 version = "1.0.1"
 description = "Live Stream Recorder"
 authors = [{ name = "Hmily" }]
